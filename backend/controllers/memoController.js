@@ -93,7 +93,10 @@ class MemoController {
 
       // 如果有签名图片文件，也要删除
       if (deletedMemo.tester_signature_path) {
-        const filePath = path.join(__dirname, '..', deletedMemo.tester_signature_path);
+        const relativePath = deletedMemo.tester_signature_path.startsWith('/')
+          ? deletedMemo.tester_signature_path.slice(1)
+          : deletedMemo.tester_signature_path;
+        const filePath = path.join(__dirname, '..', relativePath);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
