@@ -4,7 +4,6 @@
 -- 使用数据库
 -- \c elevator_memo;
 
--- 创建备忘录表
 CREATE TABLE IF NOT EXISTS memos (
     id SERIAL PRIMARY KEY,
     memo_number VARCHAR(255) UNIQUE NOT NULL,
@@ -21,6 +20,9 @@ CREATE TABLE IF NOT EXISTS memos (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 启用 pg_trgm 扩展以加速模糊搜索
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- 创建更新时间触发器函数
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -39,10 +41,11 @@ CREATE TRIGGER update_memos_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- 创建索引以提高查询性能
-CREATE INDEX IF NOT EXISTS idx_memos_memo_number ON memos(memo_number);
-CREATE INDEX IF NOT EXISTS idx_memos_user_unit_name ON memos(user_unit_name);
 CREATE INDEX IF NOT EXISTS idx_memos_created_at ON memos(created_at);
 CREATE INDEX IF NOT EXISTS idx_memos_inspection_date ON memos(inspection_date);
+-- 为模糊搜索创建三元组索引
+CREATE INDEX IF NOT EXISTS idx_memos_memo_number_trgm ON memos USING gin (memo_number gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_memos_user_unit_name_trgm ON memos USING gin (user_unit_name gin_trgm_ops);
 
 -- 插入测试数据 (可选)
 INSERT INTO memos (

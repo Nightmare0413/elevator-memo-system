@@ -42,29 +42,24 @@ class Memo {
 
   // 获取所有备忘录（支持分页和搜索）
   static async findAll(page = 1, limit = 10, search = '') {
-    let query = `
-      SELECT * FROM memos
+    const query = `
+      SELECT *, COUNT(*) OVER() AS total_count
+      FROM memos
       WHERE ($3 = '' OR user_unit_name ILIKE $3 OR memo_number ILIKE $3)
       ORDER BY created_at DESC
       LIMIT $1 OFFSET $2
     `;
-    
+
     const offset = (page - 1) * limit;
     const searchPattern = `%${search}%`;
 
     try {
       const result = await pool.query(query, [limit, offset, searchPattern]);
-      
-      // 获取总数
-      const countQuery = `
-        SELECT COUNT(*) FROM memos
-        WHERE ($1 = '' OR user_unit_name ILIKE $1 OR memo_number ILIKE $1)
-      `;
-      const countResult = await pool.query(countQuery, [searchPattern]);
-      const total = parseInt(countResult.rows[0].count);
+      const total = result.rows.length ? parseInt(result.rows[0].total_count) : 0;
+      const memos = result.rows.map(({ total_count, ...memo }) => memo);
 
       return {
-        memos: result.rows,
+        memos,
         pagination: {
           page,
           limit,

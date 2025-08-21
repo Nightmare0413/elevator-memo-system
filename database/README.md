@@ -37,6 +37,15 @@ DB_PASSWORD=你的密码
 DB_PORT=5432
 ```
 
+### 6. 搜索性能优化
+初始化脚本会自动启用 `pg_trgm` 扩展并创建基于 GIN 的三元组索引，
+以提升按单位名称和备忘录编号进行模糊查询时的性能。如果数据库
+未启用该扩展，可手动执行：
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
 ### 5. 验证数据库连接
 启动后端服务后，如果看到 "Connected to PostgreSQL database" 消息，说明连接成功。
 
@@ -61,10 +70,10 @@ DB_PORT=5432
 | updated_at | TIMESTAMP | DEFAULT NOW() | 更新时间 |
 
 ### 索引
-- idx_memos_memo_number: 备忘录编号索引
-- idx_memos_user_unit_name: 使用单位名称索引  
 - idx_memos_created_at: 创建时间索引
 - idx_memos_inspection_date: 检测日期索引
+- idx_memos_memo_number_trgm: 备忘录编号三元组索引
+- idx_memos_user_unit_name_trgm: 使用单位名称三元组索引
 
 ### 触发器
 - update_memos_updated_at: 自动更新 updated_at 字段

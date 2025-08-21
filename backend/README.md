@@ -35,6 +35,9 @@ DB_HOST=localhost
 DB_NAME=elevator_memo
 DB_PASSWORD=your_password
 DB_PORT=5432
+DB_POOL_MAX=20
+DB_IDLE_TIMEOUT=30000
+DB_CONN_TIMEOUT=2000
 ```
 
 ## 启动服务
