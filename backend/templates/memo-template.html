@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电梯自行检测备忘录</title>
+    <style>
+        body {
+            font-family: 'SimSun', serif;
+            font-size: 12px;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #000;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+            padding: 10px 0;
+        }
+        
+        .memo-number {
+            text-align: right;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+        
+        .content {
+            width: 100%;
+        }
+        
+        .field-row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .field-label {
+            font-weight: bold;
+            white-space: nowrap;
+            margin-right: 10px;
+        }
+        
+        .field-value {
+            border-bottom: 1px solid #000;
+            flex: 1;
+            padding: 2px 5px;
+            min-height: 16px;
+        }
+        
+        .signature-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature-box {
+            text-align: center;
+            width: 45%;
+        }
+        
+        .signature-box .label {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .signature-box .signature {
+            border: 1px solid #000;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .date-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .date-row {
+            display: inline-block;
+            margin: 0 20px;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .radio {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #000;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .radio.checked {
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>电梯自行检测备忘录</h1>
+    </div>
+    
+    <div class="memo-number">
+        编号：{{memo_number}}
+    </div>
+    
+    <div class="content">
+        <div class="field-row">
+            <span class="field-label">使用单位名称：</span>
+            <span class="field-value">{{user_unit_name}}</span>
+        </div>
+        
+        <div class="field-row">
+            <span class="field-label">安装地点：</span>
+            <span class="field-value">{{installation_location}}</span>
+        </div>
+        
+        <div class="field-row">
+            <span class="field-label">设备品种：</span>
+            <span class="field-value">{{equipment_type}}</span>
+        </div>
+        
+        <div class="field-row">
+            <span class="field-label">产品编号：</span>
+            <span class="field-value">{{product_number}}</span>
+        </div>
+        
+        <div class="field-row">
+            <span class="field-label">使用登记证编号：</span>
+            <span class="field-value">{{registration_cert_no}}</span>
+        </div>
+        
+        <div class="field-row">
+            <span class="field-label">不符合情况及建议：</span>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <span class="radio"></span>
+                    <span>无</span>
+                </div>
+                <div class="radio-item">
+                    <span class="radio"></span>
+                    <span>存在不符合</span>
+                </div>
+                <div class="radio-item">
+                    <span class="radio"></span>
+                    <span>存在较严重不符合</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="label">检测人员：</div>
+            <div class="signature">{{tester_signature}}</div>
+        </div>
+        
+        <div class="signature-box">
+            <div class="label">使用单位代表：</div>
+            <div class="signature">{{representative_signature}}</div>
+        </div>
+    </div>
+    
+    <div class="date-section">
+        <div class="date-row">
+            <span class="field-label">检测日期：</span>
+            <span class="field-value">{{inspection_date}}</span>
+        </div>
+        
+        <div class="date-row">
+            <span class="field-label">签收日期：</span>
+            <span class="field-value">{{signing_date}}</span>
+        </div>
+    </div>
+    
+    <script>
+        // 根据不符合情况状态设置单选按钮
+        const nonConformanceStatus = '{{non_conformance_status}}';
+        const radios = document.querySelectorAll('.radio-group .radio');
+        
+        if (nonConformanceStatus === '无') {
+            radios[0].classList.add('checked');
+        } else if (nonConformanceStatus === '存在不符合') {
+            radios[1].classList.add('checked');
+        } else if (nonConformanceStatus === '存在较严重不符合') {
+            radios[2].classList.add('checked');
+        }
+    </script>
+</body>
+</html>
