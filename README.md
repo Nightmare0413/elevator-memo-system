@@ -98,7 +98,7 @@ elevator-memo-system/
 
 ### 1. 克隆项目
 ```bash
-git clone <repository-url>
+git clone https://github.com/Nightmare0413/elevator-memo-system.git
 cd elevator-memo-system
 ```
 
