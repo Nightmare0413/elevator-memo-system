@@ -33,8 +33,8 @@ export function downloadFile(blob, filename) {
 // 不符合情况选项
 export const nonConformanceOptions = [
   { label: '无', value: 0 },
-  { label: '存在不符合', value: 1 },
-  { label: '存在较严重不符合', value: 2 }
+  { label: '该电梯存在不符合，建议立即整改。', value: 1 },
+  { label: '该电梯存在较严重的不符合，建议立即停用整改。', value: 2 }
 ]
 
 // 获取不符合情况标签

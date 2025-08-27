@@ -3,15 +3,29 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
+// PDF生成互斥锁
+let pdfGenerationMutex = Promise.resolve();
+
 class MemoController {
   // 获取所有备忘录
   static async getAllMemos(req, res) {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
-      const search = req.query.search || '';
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+      
+      // 构建筛选条件对象
+      const filters = {
+        search: req.query.search || '',
+        date: req.query.date || '',
+        memo_number: req.query.memo_number || '',
+        user_unit_name: req.query.user_unit_name || '',
+        registration_cert_no: req.query.registration_cert_no || '',
+        user_full_name: req.query.user_full_name || ''
+      };
 
-      const result = await Memo.findAll(page, limit, search);
+      const result = await Memo.findAll(page, limit, filters, userId, userRole);
       res.status(200).json(result);
     } catch (error) {
       console.error('获取备忘录列表失败:', error);
@@ -35,6 +49,9 @@ class MemoController {
         req.body.inspection_date = new Date().toISOString().split('T')[0];
       }
 
+      // 设置创建者
+      req.body.created_by = req.user.userId;
+
       const newMemo = await Memo.create(req.body);
       res.status(201).json(newMemo);
     } catch (error) {
@@ -50,7 +67,9 @@ class MemoController {
   static async getMemoById(req, res) {
     try {
       const { id } = req.params;
-      const memo = await Memo.findById(id);
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+      const memo = await Memo.findById(id, userId, userRole);
       
       if (!memo) {
         return res.status(404).json({ error: '备忘录不存在' });
@@ -70,7 +89,9 @@ class MemoController {
   static async copyMemo(req, res) {
     try {
       const { id } = req.params;
-      const copiedMemo = await Memo.copy(id);
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+      const copiedMemo = await Memo.copy(id, userId, userRole);
       res.status(201).json(copiedMemo);
     } catch (error) {
       console.error('复制备忘录失败:', error);
@@ -85,7 +106,9 @@ class MemoController {
   static async deleteMemo(req, res) {
     try {
       const { id } = req.params;
-      const deletedMemo = await Memo.delete(id);
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+      const deletedMemo = await Memo.delete(id, userId, userRole);
       
       if (!deletedMemo) {
         return res.status(404).json({ error: '备忘录不存在' });
@@ -111,10 +134,22 @@ class MemoController {
 
   // 生成PDF
   static async generatePDF(req, res) {
+    // 使用互斥锁确保同一时间只有一个PDF在生成
+    pdfGenerationMutex = pdfGenerationMutex.then(async () => {
+      return await MemoController._generatePDFInternal(req, res);
+    });
+    
+    return pdfGenerationMutex;
+  }
+
+  // 内部PDF生成方法
+  static async _generatePDFInternal(req, res) {
     let browser = null;
     try {
       const { id } = req.params;
-      const memo = await Memo.findById(id);
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+      const memo = await Memo.findById(id, userId, userRole);
       
       if (!memo) {
         return res.status(404).json({ error: '备忘录不存在' });
@@ -123,6 +158,16 @@ class MemoController {
       // 读取HTML模板
       const templatePath = path.join(__dirname, '../templates/memo-template.html');
       let htmlTemplate = fs.readFileSync(templatePath, 'utf-8');
+
+      // 格式化日期显示
+      const formatDateForPDF = (dateStr) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${year}年${month}月${day}日`;
+      };
 
       // 替换模板中的数据
       htmlTemplate = htmlTemplate
@@ -133,38 +178,46 @@ class MemoController {
         .replace(/{{product_number}}/g, memo.product_number || '')
         .replace(/{{registration_cert_no}}/g, memo.registration_cert_no || '')
         .replace(/{{inspection_date}}/g, memo.inspection_date || '')
-        .replace(/{{signing_date}}/g, memo.signing_date || '');
+        .replace(/{{inspection_date_formatted}}/g, formatDateForPDF(memo.inspection_date))
+        .replace(/{{signing_date}}/g, memo.signing_date || '')
+        .replace(/{{signing_date_formatted}}/g, formatDateForPDF(memo.signing_date))
+        .replace(/{{recommendations}}/g, memo.recommendations || '')
+        .replace(/{{non_conformance_status_raw}}/g, memo.non_conformance_status || 0);
 
-      // 处理不符合情况
-      const nonConformanceMap = {
-        0: '无',
-        1: '存在不符合',
-        2: '存在较严重不符合'
-      };
-      htmlTemplate = htmlTemplate.replace(/{{non_conformance_status}}/g, 
-        nonConformanceMap[memo.non_conformance_status] || '');
+      // 建议区域始终显示
+      const recommendationsDisplay = '';
+      htmlTemplate = htmlTemplate.replace(/{{recommendations_display}}/g, recommendationsDisplay);
 
-      // 处理签名图片
+      // 处理检测人员签名图片（使用用户默认签名）
       if (memo.tester_signature_path) {
-        const imagePath = path.join(__dirname, '..', memo.tester_signature_path);
-        if (fs.existsSync(imagePath)) {
-          const imageData = fs.readFileSync(imagePath);
-          const imageBase64 = `data:image/png;base64,${imageData.toString('base64')}`;
-          htmlTemplate = htmlTemplate.replace(/{{tester_signature}}/g, 
-            `<img src="${imageBase64}" alt="检测人员签名" style="max-height: 50px;">`);
-        } else {
+        try {
+          const imagePath = path.join(__dirname, '..', memo.tester_signature_path);
+          console.log(`尝试读取签名图片: ${imagePath}`);
+          
+          if (fs.existsSync(imagePath)) {
+            const imageData = fs.readFileSync(imagePath);
+            const imageBase64 = `data:image/png;base64,${imageData.toString('base64')}`;
+            htmlTemplate = htmlTemplate.replace(/{{tester_signature}}/g, 
+              `<img src="${imageBase64}" alt="检测人员签名" class="signature-image">`);
+            console.log(`成功读取签名图片: ${memo.memo_number}`);
+          } else {
+            console.log(`签名图片文件不存在: ${imagePath}`);
+            htmlTemplate = htmlTemplate.replace(/{{tester_signature}}/g, '');
+          }
+        } catch (error) {
+          console.error(`读取签名图片失败: ${error.message}`);
           htmlTemplate = htmlTemplate.replace(/{{tester_signature}}/g, '');
         }
       } else {
         htmlTemplate = htmlTemplate.replace(/{{tester_signature}}/g, '');
       }
 
-      // 处理手写签名
+      // 处理使用单位代表签名
       if (memo.representative_signature) {
-        htmlTemplate = htmlTemplate.replace(/{{representative_signature}}/g, 
-          `<img src="${memo.representative_signature}" alt="使用单位代表签名" style="max-height: 50px;">`);
+        const signatureImg = `<img src="${memo.representative_signature}" alt="使用单位代表签名" class="signature-image">`;
+        htmlTemplate = htmlTemplate.replace(/{{representative_signature_display}}/g, signatureImg);
       } else {
-        htmlTemplate = htmlTemplate.replace(/{{representative_signature}}/g, '');
+        htmlTemplate = htmlTemplate.replace(/{{representative_signature_display}}/g, '');
       }
 
       // 启动Puppeteer
@@ -205,6 +258,46 @@ class MemoController {
       if (browser) {
         await browser.close();
       }
+    }
+  }
+
+  // 批量签字
+  static async batchSign(req, res) {
+    try {
+      const { memo_ids, representative_signature, signing_date } = req.body;
+      
+      if (!memo_ids || !Array.isArray(memo_ids) || memo_ids.length === 0) {
+        return res.status(400).json({ error: '请选择要签字的备忘录' });
+      }
+      
+      if (!representative_signature) {
+        return res.status(400).json({ error: '请提供签字信息' });
+      }
+
+      const updatedMemos = [];
+      
+      // 批量更新备忘录签字信息
+      for (const memoId of memo_ids) {
+        const updatedMemo = await Memo.updateSignature(memoId, {
+          representative_signature,
+          signing_date: signing_date || new Date().toISOString().split('T')[0]
+        });
+        
+        if (updatedMemo) {
+          updatedMemos.push(updatedMemo);
+        }
+      }
+      
+      res.status(200).json({
+        message: `成功为 ${updatedMemos.length} 份备忘录签字`,
+        updated_memos: updatedMemos
+      });
+    } catch (error) {
+      console.error('批量签字失败:', error);
+      res.status(500).json({ 
+        error: '批量签字失败', 
+        message: error.message 
+      });
     }
   }
 }

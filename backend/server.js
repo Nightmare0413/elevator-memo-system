@@ -1,8 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const Scheduler = require('./utils/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,9 +20,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 路由配置
 const memoRoutes = require('./routes/memoRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 app.use('/api/memos', memoRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/users', userRoutes);
 
 // 根路径
 app.get('/', (req, res) => {
@@ -51,4 +55,7 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`服务器运行在端口 ${PORT}`);
   console.log(`访问地址: http://localhost:${PORT}`);
+  
+  // 初始化定时任务调度器
+  Scheduler.init();
 });

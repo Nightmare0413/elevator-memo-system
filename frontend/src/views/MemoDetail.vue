@@ -59,13 +59,23 @@
             {{ memo.registration_cert_no }}
           </el-descriptions-item>
           
-          <el-descriptions-item label="不符合情况">
+          <el-descriptions-item label="不符合情况" :span="memo.non_conformance_status === 0 ? 1 : 2">
             <el-tag 
               :type="getNonConformanceTagType(memo.non_conformance_status)"
               size="small"
             >
               {{ getNonConformanceLabel(memo.non_conformance_status) }}
             </el-tag>
+          </el-descriptions-item>
+          
+          <el-descriptions-item 
+            v-if="memo.non_conformance_status !== 0 && memo.recommendations" 
+            label="相关建议" 
+            :span="2"
+          >
+            <div class="recommendations-content">
+              {{ memo.recommendations }}
+            </div>
           </el-descriptions-item>
           
           <el-descriptions-item label="检测日期">
@@ -325,6 +335,16 @@ export default {
 .loading-container {
   text-align: center;
   padding: 40px 0;
+}
+
+.recommendations-content {
+  background-color: #f8f9fa;
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 4px solid #409EFF;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 响应式设计 */

@@ -3,7 +3,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 创建axios实例
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -13,7 +13,11 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   config => {
-    // 可以在这里添加token等认证信息
+    // 添加认证token
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
     return config
   },
   error => {
@@ -37,22 +41,29 @@ request.interceptors.response.use(
       
       switch (status) {
         case 400:
-          message = data.message || '请求参数错误'
+          message = data.error || data.message || '请求参数错误'
           break
         case 401:
           message = '未授权访问'
+          // 清除本地存储的认证信息
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          // 跳转到登录页
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
+          }
           break
         case 403:
-          message = '禁止访问'
+          message = data.error || data.message || '禁止访问'
           break
         case 404:
           message = '请求的资源不存在'
           break
         case 500:
-          message = data.message || '服务器内部错误'
+          message = data.error || data.message || '服务器内部错误'
           break
         default:
-          message = data.message || `请求失败 (${status})`
+          message = data.error || data.message || `请求失败 (${status})`
       }
     } else if (error.request) {
       message = '网络连接失败，请检查网络'

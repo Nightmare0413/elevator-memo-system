@@ -42,5 +42,10 @@ export const memoApi = {
         'Content-Type': 'multipart/form-data'
       }
     })
+  },
+
+  // 批量签字
+  batchSign(data) {
+    return request.post('/api/memos/batch-sign', data)
   }
 }
