@@ -16,6 +16,11 @@ export const memoApi = {
     return request.post('/api/memos', data)
   },
 
+  // 更新备忘录
+  updateMemo(id, data) {
+    return request.put(`/api/memos/${id}`, data)
+  },
+
   // 复制备忘录
   copyMemo(id) {
     return request.post(`/api/memos/${id}/copy`)

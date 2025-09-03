@@ -203,14 +203,6 @@
           <el-button @click="handleCancel" :icon="Close">
             取消
           </el-button>
-          <el-button 
-            v-if="isEdit" 
-            type="warning" 
-            @click="generatePreview"
-            :icon="View"
-          >
-            预览PDF
-          </el-button>
         </div>
       </el-form-item>
     </el-form>
@@ -227,7 +219,6 @@ import {
   Delete, 
   Check, 
   Close, 
-  View,
   Lock
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -239,7 +230,6 @@ export default {
     Delete,
     Check,
     Close,
-    View,
     Lock
   },
   props: {
@@ -373,12 +363,12 @@ export default {
         return path
       }
       if (path.startsWith('/')) {
-        const result = `http://localhost:3000${path}`
+        const result = `${import.meta.env.VITE_API_BASE_URL || '/api'}${path}`
         console.log('绝对路径，返回:', result)
         return result
       }
       // 处理相对路径，添加前缀
-      const result = `http://localhost:3000/${path}`
+      const result = `${import.meta.env.VITE_API_BASE_URL || '/api'}/${path}`
       console.log('相对路径，返回:', result)
       return result
     },
@@ -459,21 +449,6 @@ export default {
     // 取消操作
     handleCancel() {
       this.$emit('cancel')
-    },
-
-    // 生成预览（仅编辑模式）
-    async generatePreview() {
-      if (!this.isEdit || !this.memoData.id) return
-      
-      try {
-        const response = await memoApi.generatePDF(this.memoData.id)
-        const blob = new Blob([response], { type: 'application/pdf' })
-        const url = URL.createObjectURL(blob)
-        window.open(url, '_blank')
-      } catch (error) {
-        console.error('生成预览失败:', error)
-        ElMessage.error('生成预览失败')
-      }
     }
   }
 }
@@ -537,10 +512,15 @@ export default {
   justify-content: flex-start;
 }
 
+.preview-action {
+  margin-top: 10px;
+  text-align: center;
+}
+
 /* 移动端优先表单设计 */
 @media (max-width: 768px) {
   .memo-form {
-    padding: 0;
+    padding: 8px;
     max-width: 100%;
   }
   
@@ -550,27 +530,33 @@ export default {
     background: white;
     border-radius: 12px;
     margin-bottom: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
   
-  /* 表单项优化 */
+  /* 表单项横向布局优化 */
   :deep(.el-form-item) {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
   }
   
   :deep(.el-form-item__label) {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: #303133;
     line-height: 1.4;
-    margin-bottom: 8px;
-    padding: 0 !important;
+    margin-bottom: 0;
+    padding: 0 12px 0 0 !important;
     text-align: left !important;
-    width: 100% !important;
+    width: 120px !important;
+    flex-shrink: 0;
   }
   
   :deep(.el-form-item__content) {
     margin-left: 0 !important;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
   }
   
   /* 输入框优化 */
@@ -579,6 +565,7 @@ export default {
   :deep(.el-select),
   :deep(.el-date-picker) {
     width: 100% !important;
+    max-width: none;
   }
   
   :deep(.el-input__inner),
@@ -601,12 +588,23 @@ export default {
     box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
   }
   
+  /* 文本域特殊处理，允许换行 */
+  :deep(.el-form-item:has(.el-textarea)) {
+    flex-wrap: wrap;
+  }
+  
+  :deep(.el-form-item:has(.el-textarea) .el-form-item__content) {
+    width: 100%;
+    margin-top: 8px;
+  }
+  
   :deep(.el-textarea .el-textarea__inner) {
     height: auto;
     min-height: 80px;
     padding: 12px 16px;
     line-height: 1.5;
     resize: vertical;
+    width: 100%;
   }
   
   /* 选择框优化 */
@@ -624,24 +622,43 @@ export default {
     line-height: 48px;
   }
   
-  /* 单选框优化 */
+  /* 单选框优化 - 特殊处理，允许换行 */
+  :deep(.el-form-item:has(.el-radio-group)) {
+    flex-wrap: wrap;
+  }
+  
+  :deep(.el-form-item:has(.el-radio-group) .el-form-item__content) {
+    width: 100%;
+    margin-top: 8px;
+  }
+  
   :deep(.el-radio-group) {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-top: 8px;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
   }
   
   :deep(.el-radio) {
     margin: 0;
-    padding: 12px 16px;
-    border: 2px solid #e1e5e9;
-    border-radius: 8px;
+    padding: 4px 6px;
+    border: 1px solid #e1e5e9;
+    border-radius: 4px;
     background: white;
     transition: all 0.3s ease;
-    min-height: 48px;
+    min-height: auto;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    width: 100%;
+    line-height: 1.2;
+  }
+  
+  :deep(.el-radio__label) {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
   }
   
   :deep(.el-radio.is-checked) {
@@ -650,7 +667,7 @@ export default {
   }
   
   :deep(.el-radio__input) {
-    margin-right: 8px;
+    margin-right: 6px;
   }
   
   :deep(.el-radio__label) {
@@ -659,9 +676,30 @@ export default {
     font-weight: 500;
   }
   
-  /* 文件上传优化 */
+  /* 文件上传优化 - 特殊处理，允许换行 */
+  :deep(.el-form-item:has(.signature-upload)) {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  
+  :deep(.el-form-item:has(.signature-upload) .el-form-item__label) {
+    align-self: flex-start;
+    margin-bottom: 0;
+    padding-right: 12px;
+    padding-top: 8px;
+    line-height: 32px;
+  }
+  
+  :deep(.el-form-item:has(.signature-upload) .el-form-item__content) {
+    width: 100%;
+    margin-top: 8px;
+    display: flex;
+    align-items: flex-start;
+  }
+  
   .signature-upload {
-    margin-top: 12px;
+    margin-top: 0;
+    width: 100%;
   }
   
   :deep(.el-upload) {
@@ -721,29 +759,46 @@ export default {
     text-align: center;
   }
   
-  /* 表单操作按钮 */
+  /* 表单操作按钮 - 横向居中排列 */
   .form-actions {
     display: flex;
-    gap: 12px;
-    justify-content: space-between;
+    gap: 16px;
+    justify-content: center;
     margin-top: 24px;
-    padding: 16px;
-    background: #f8f9fa;
-    border-radius: 8px;
+    padding: 20px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
     position: sticky;
     bottom: 0;
     z-index: 100;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    flex-direction: row;
+  }
+  
+  /* 预览PDF按钮样式 */
+  .preview-action {
+    margin-top: 12px;
+    padding: 0 16px;
+    text-align: center;
+  }
+  
+  .preview-action .el-button {
+    height: 44px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    min-width: 120px;
+    padding: 0 24px;
   }
   
   .form-actions .el-button {
-    flex: 1;
-    height: 48px;
-    font-size: 16px;
+    height: 44px;
+    font-size: 15px;
     font-weight: 600;
     border-radius: 8px;
     margin: 0;
-    min-width: 0;
+    min-width: 120px;
+    padding: 0 24px;
   }
   
   .form-actions .el-button--primary {
@@ -789,11 +844,13 @@ export default {
   }
   
   :deep(.el-form-item) {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
   
   :deep(.el-form-item__label) {
-    font-size: 14px;
+    font-size: 13px;
+    width: 100px !important;
+    padding-right: 8px !important;
   }
   
   :deep(.el-input__inner),
@@ -838,23 +895,20 @@ export default {
     width: 100% !important;
   }
   
-  /* 单选按钮组手机端优化 */
-  :deep(.el-radio-group) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
+  /* 单选按钮组保持横向设计中的垂直布局 */
   
   :deep(.el-radio) {
     margin-right: 0;
-    margin-bottom: 5px;
-    font-size: 13px;
-    line-height: 1.3;
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    min-height: auto;
   }
   
   :deep(.el-radio__label) {
-    font-size: 13px;
-    line-height: 1.3;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
   }
   
   /* 签名相关手机端优化 */
@@ -862,18 +916,20 @@ export default {
     width: 100%;
   }
   
-  /* 表单操作按钮手机端优化 */
+  /* 表单操作按钮手机端优化 - 保持横向居中 */
   .form-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
+    flex-direction: row;
+    gap: 12px;
     margin-top: 20px;
+    padding: 16px;
+    justify-content: center;
   }
   
   .form-actions .el-button {
-    width: 100%;
-    padding: 10px;
+    height: 40px;
     font-size: 14px;
+    min-width: 100px;
+    padding: 0 20px;
   }
   
   /* 上传提示手机端优化 */

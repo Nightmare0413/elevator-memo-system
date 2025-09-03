@@ -65,4 +65,58 @@ export default {
   font-size: 16px;
   font-weight: bold;
 }
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .memo-create {
+    padding: 8px;
+    max-width: 100%;
+    margin: 0;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  
+  :deep(.el-card) {
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f0f0f0;
+    min-height: calc(100vh - 16px);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  :deep(.el-card__header) {
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+  }
+  
+  :deep(.el-card__body) {
+    padding: 0;
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 80px; /* 为底部按钮留出空间 */
+  }
+  
+  .card-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+  }
+}
+
+@media (max-width: 480px) {
+  .memo-create {
+    padding: 4px;
+  }
+  
+  :deep(.el-card__header) {
+    padding: 12px;
+  }
+  
+  .card-header {
+    font-size: 16px;
+  }
+}
 </style>

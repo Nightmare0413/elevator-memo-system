@@ -1,5 +1,10 @@
 -- 电梯自行检测备忘录系统 - 数据库完整架构
 -- 包含所有表结构、索引、触发器和测试数据
+-- PostgreSQL 版本要求：>= 12.0
+
+-- 设置时区和字符集
+SET timezone = 'Asia/Shanghai';
+SET client_encoding = 'UTF8';
 
 -- ============================================================================
 -- 1. 核心表结构
@@ -50,9 +55,19 @@ CREATE TABLE IF NOT EXISTS user_signatures (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 添加外键关系
-ALTER TABLE memos ADD CONSTRAINT fk_memos_created_by 
-    FOREIGN KEY (created_by) REFERENCES users(id);
+-- 添加外键关系（如果不存在）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_memos_created_by'
+        AND table_name = 'memos'
+    ) THEN
+        ALTER TABLE memos ADD CONSTRAINT fk_memos_created_by 
+            FOREIGN KEY (created_by) REFERENCES users(id);
+    END IF;
+END
+$$;
 
 -- ============================================================================
 -- 2. 触发器函数
@@ -117,48 +132,60 @@ CREATE INDEX IF NOT EXISTS idx_user_signatures_is_default ON user_signatures(use
 -- ============================================================================
 
 -- 插入默认管理员用户（密码：admin123）
+-- 注意：这个哈希值是使用 bcrypt.hash('admin123', 10) 生成的
 INSERT INTO users (username, password_hash, email, full_name, role) VALUES 
-('admin', '$2b$10$rQm7gUgOQjKQKWQQqfY3xOzMgEzb.CUlKP0ZYI.4kLGX6z8KbNzG6', 'admin@example.com', '系统管理员', 'admin')
+('admin', '$2b$10$z2XZW5urMCq/.ZZLkjXR/.Wes0cIlfPYubU.NFgMhdTbek3sySGIe', 'admin@example.com', '系统管理员', 'admin')
 ON CONFLICT (username) DO NOTHING;
 
 -- 插入示例备忘录数据
-INSERT INTO memos (
-    memo_number, 
-    user_unit_name, 
-    installation_location, 
-    equipment_type, 
-    product_number, 
-    registration_cert_no, 
-    non_conformance_status, 
-    inspection_date,
-    recommendations,
-    created_by
-) VALUES 
-(
-    'MEMO-20241220-001', 
-    '测试大厦物业管理有限公司', 
-    '测试大厦1号电梯', 
-    '客梯', 
-    'TEST-001', 
-    'REG-TEST-001', 
-    0, 
-    CURRENT_DATE,
-    '电梯运行正常，建议定期维护保养',
-    (SELECT id FROM users WHERE username = 'admin')
-),
-(
-    'MEMO-20241220-002', 
-    '示例办公楼业主委员会', 
-    '示例办公楼B座货梯', 
-    '货梯', 
-    'DEMO-002', 
-    'REG-DEMO-002', 
-    1, 
-    CURRENT_DATE - INTERVAL '1 day',
-    '发现轻微异响，建议检查导轨润滑情况',
-    (SELECT id FROM users WHERE username = 'admin')
-)
-ON CONFLICT (memo_number) DO NOTHING;
+DO $$
+DECLARE
+    admin_user_id INTEGER;
+BEGIN
+    -- 获取管理员用户ID
+    SELECT id INTO admin_user_id FROM users WHERE username = 'admin';
+    
+    IF admin_user_id IS NOT NULL THEN
+        INSERT INTO memos (
+            memo_number, 
+            user_unit_name, 
+            installation_location, 
+            equipment_type, 
+            product_number, 
+            registration_cert_no, 
+            non_conformance_status, 
+            inspection_date,
+            recommendations,
+            created_by
+        ) VALUES 
+        (
+            'MEMO-20241220-001', 
+            '测试大厦物业管理有限公司', 
+            '测试大厦1号电梯', 
+            '客梯', 
+            'TEST-001', 
+            'REG-TEST-001', 
+            0, 
+            CURRENT_DATE,
+            '电梯运行正常，建议定期维护保养',
+            admin_user_id
+        ),
+        (
+            'MEMO-20241220-002', 
+            '示例办公楼业主委员会', 
+            '示例办公楼B座货梯', 
+            '货梯', 
+            'DEMO-002', 
+            'REG-DEMO-002', 
+            1, 
+            (CURRENT_DATE - INTERVAL '1 day'),
+            '发现轻微异响，建议检查导轨润滑情况',
+            admin_user_id
+        )
+        ON CONFLICT (memo_number) DO NOTHING;
+    END IF;
+END
+$$;
 
 -- ============================================================================
 -- 5. 更新表统计信息

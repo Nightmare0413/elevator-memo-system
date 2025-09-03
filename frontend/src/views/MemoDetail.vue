@@ -229,7 +229,7 @@ export default {
     // 获取图片URL
     getImageUrl(path) {
       if (path.startsWith('/')) {
-        return `http://localhost:3000${path}`
+        return `${import.meta.env.VITE_API_BASE_URL || '/api'}${path}`
       }
       return path
     },

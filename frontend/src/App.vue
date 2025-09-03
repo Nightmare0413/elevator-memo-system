@@ -95,6 +95,10 @@ onMounted(async () => {
 body {
   margin: 0;
   padding: 0;
+  /* 移动端优化 */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
 .header {

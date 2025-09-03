@@ -72,8 +72,7 @@ export default {
     // 处理表单提交
     async handleSubmit(formData) {
       try {
-        // 这里需要调用更新API（当前后端没有实现update接口）
-        // await memoApi.updateMemo(this.memo.id, formData)
+        await memoApi.updateMemo(this.memo.id, formData)
         ElMessage.success('备忘录更新成功')
         this.$router.push('/')
       } catch (error) {

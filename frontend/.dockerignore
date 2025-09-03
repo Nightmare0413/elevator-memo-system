@@ -1,0 +1,36 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Development files
+.env.local
+.env.development
+.env.test
+*.local
+
+# Build artifacts (已在镜像中构建)
+dist/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Cache
+.eslintcache
+*.tsbuildinfo

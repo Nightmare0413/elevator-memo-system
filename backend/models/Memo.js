@@ -55,10 +55,14 @@ class Memo {
     const { search, date, memo_number, user_unit_name, registration_cert_no, user_full_name } = filters;
 
     // 用户权限过滤条件（优先级最高，利用索引）
+    console.log('Memo.findAll权限检查:', { userId, userRole });
     if (userId && userRole === 'user') {
+      console.log('应用用户权限过滤，只显示用户自己的记录');
       whereConditions.push(`m.created_by = $${paramIndex}`);
       queryParams.push(userId);
       paramIndex++;
+    } else {
+      console.log('管理员用户或无userId，显示所有记录');
     }
 
     // 备忘录编号筛选（精确匹配优先，利用主要索引）
@@ -127,35 +131,23 @@ class Memo {
     try {
       const result = await pool.query(query, queryParams);
       
-      // 优化总数查询 - 对于大数据量，使用估算或缓存
-      let total;
+      // 精确计算总数 - 确保数据准确性
       const countParams = queryParams.slice(0, -2); // 移除limit和offset参数
+      const countQuery = `
+        SELECT COUNT(*) FROM memos m
+        LEFT JOIN users u ON m.created_by = u.id
+        WHERE ${whereClause}
+      `;
+      const countResult = await pool.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].count);
       
-      // 如果没有复杂筛选条件，使用快速估算
-      if (whereConditions.length <= 2) { // 只有基础条件
-        // 对于无筛选或只有用户筛选的情况，使用表统计信息快速估算
-        const estimateQuery = `
-          SELECT reltuples::bigint AS estimate
-          FROM pg_class
-          WHERE relname = 'memos'
-        `;
-        const estimateResult = await pool.query(estimateQuery);
-        total = parseInt(estimateResult.rows[0]?.estimate || 0);
-        
-        // 如果有用户筛选，按比例估算
-        if (userId && userRole === 'user') {
-          total = Math.floor(total / 10); // 假设每个用户平均创建1/10的数据
-        }
-      } else {
-        // 有复杂筛选条件时，仍使用精确COUNT，但优化查询
-        const countQuery = `
-          SELECT COUNT(*) FROM memos m
-          LEFT JOIN users u ON m.created_by = u.id
-          WHERE ${whereClause}
-        `;
-        const countResult = await pool.query(countQuery, countParams);
-        total = parseInt(countResult.rows[0].count);
-      }
+      console.log('Memo.findAll查询结果:', {
+        memosCount: result.rows.length,
+        total,
+        filters,
+        userId,
+        userRole
+      });
 
       return {
         memos: result.rows,
@@ -263,6 +255,58 @@ class Memo {
       return result.rows[0];
     } catch (error) {
       throw error;
+    }
+  }
+
+  // 更新备忘录
+  static async update(id, updateData, userId = null, userRole = null) {
+    const allowedFields = [
+      'user_unit_name', 'installation_location', 'equipment_type', 
+      'product_number', 'registration_cert_no', 'inspection_date',
+      'non_conformance_status', 'recommendations'
+    ];
+
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    // 构建更新字段
+    for (const [key, value] of Object.entries(updateData)) {
+      if (allowedFields.includes(key)) {
+        updateFields.push(`${key} = $${paramIndex}`);
+        updateValues.push(value);
+        paramIndex++;
+      }
+    }
+
+    if (updateFields.length === 0) {
+      throw new Error('没有有效的更新字段');
+    }
+
+    updateFields.push(`updated_at = $${paramIndex}`);
+    updateValues.push(new Date().toISOString());
+    paramIndex++;
+
+    let query = `UPDATE memos SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`;
+    updateValues.push(id);
+    
+    // 普通用户只能更新自己创建的备忘录
+    if (userId && userRole === 'user') {
+      query += ` AND created_by = $${paramIndex + 1}`;
+      updateValues.push(userId);
+    }
+    
+    query += ' RETURNING *';
+
+    try {
+      const result = await pool.query(query, updateValues);
+      if (result.rows.length === 0) {
+        throw new Error('备忘录不存在或无权限更新');
+      }
+      return result.rows[0];
+    } catch (error) {
+      console.error('更新备忘录失败:', error);
+      throw new Error('更新备忘录失败');
     }
   }
 

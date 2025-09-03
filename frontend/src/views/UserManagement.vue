@@ -22,8 +22,8 @@
       </template>
 
       <div class="search-bar">
-        <el-row :gutter="20">
-          <el-col :span="8">
+        <el-row :gutter="20" class="search-row">
+          <el-col :xs="24" :sm="16" :md="8">
             <el-input
               v-model="searchForm.search"
               placeholder="搜索用户名、姓名或手机号"
@@ -36,14 +36,17 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :span="4">
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+          <el-col :xs="24" :sm="8" :md="4">
+            <div class="search-buttons">
+              <el-button type="primary" @click="handleSearch" class="search-btn">搜索</el-button>
+              <el-button @click="resetSearch" class="reset-btn">重置</el-button>
+            </div>
           </el-col>
         </el-row>
       </div>
 
-      <el-table :data="users" style="width: 100%" v-loading="loading">
+      <!-- 桌面端表格 -->
+      <el-table :data="users" style="width: 100%" v-loading="loading" class="desktop-table">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" />
         <el-table-column prop="full_name" label="真实姓名" />
@@ -93,6 +96,69 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 移动端卡片布局 -->
+      <div class="mobile-user-list">
+        <div 
+          v-for="user in users" 
+          :key="user.id" 
+          class="mobile-user-card"
+        >
+          <div class="mobile-user-header">
+            <div class="mobile-user-info">
+              <div class="mobile-user-name">{{ user.full_name }}</div>
+              <div class="mobile-user-username">@{{ user.username }}</div>
+            </div>
+            <div class="mobile-user-id">#{{ user.id }}</div>
+          </div>
+          
+          <div class="mobile-user-body">
+            <div class="mobile-user-row">
+              <span class="mobile-user-label">手机号:</span>
+              <span class="mobile-user-value">{{ user.phone || '未设置' }}</span>
+            </div>
+            <div class="mobile-user-row">
+              <span class="mobile-user-label">角色:</span>
+              <span class="mobile-user-value">
+                <el-tag :type="user.role === 'admin' ? 'danger' : 'primary'" size="small">
+                  {{ user.role === 'admin' ? '管理员' : '普通用户' }}
+                </el-tag>
+              </span>
+            </div>
+            <div class="mobile-user-row">
+              <span class="mobile-user-label">状态:</span>
+              <span class="mobile-user-value">
+                <el-tag :type="user.is_active ? 'success' : 'info'" size="small">
+                  {{ user.is_active ? '活跃' : '停用' }}
+                </el-tag>
+              </span>
+            </div>
+            <div class="mobile-user-row">
+              <span class="mobile-user-label">创建时间:</span>
+              <span class="mobile-user-value">{{ formatDate(user.created_at) }}</span>
+            </div>
+          </div>
+          
+          <div class="mobile-user-actions">
+            <el-button 
+              type="primary"
+              size="default"
+              @click="handleAction('editUser', user)"
+              :disabled="user.id === currentUser?.id"
+            >
+              编辑
+            </el-button>
+            <el-button 
+              type="danger"
+              size="default"
+              @click="handleAction('deactivate', user)"
+              :disabled="user.id === currentUser?.id || !user.is_active"
+            >
+              停用
+            </el-button>
+          </div>
+        </div>
+      </div>
 
       <div class="pagination" v-if="pagination.total > 0">
         <el-pagination
@@ -704,7 +770,7 @@ const handleAction = async (command, user) => {
           const filePath = defaultSignature.file_path.startsWith('/') 
             ? defaultSignature.file_path 
             : `/${defaultSignature.file_path}`
-          editUserForm.signaturePreview = `http://localhost:3000${filePath}`
+          editUserForm.signaturePreview = `${import.meta.env.VITE_API_BASE_URL || '/api'}${filePath}`
         }
       } catch (error) {
         console.error('加载用户签名失败:', error)
@@ -861,6 +927,24 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.search-bar .el-row {
+  align-items: center;
+}
+
+.search-bar .el-button {
+  margin-left: 8px;
+}
+
+.search-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-buttons .el-button {
+  margin: 0;
+}
+
 
 .pagination {
   margin-top: 20px;
@@ -895,44 +979,183 @@ onMounted(() => {
   margin-top: 8px;
 }
 
+/* 桌面端显示表格 */
+@media (min-width: 769px) {
+  .mobile-user-list {
+    display: none !important;
+  }
+}
+
 /* 移动端优化 */
 @media (max-width: 768px) {
   .user-management {
     padding: 10px;
   }
   
+  /* 隐藏桌面端表格，显示移动端卡片 */
+  .desktop-table {
+    display: none !important;
+  }
+  
+  .mobile-user-list {
+    display: block !important;
+    width: 100%;
+  }
+  
+  .mobile-user-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f0f0f0;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+  
+  .mobile-user-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+  }
+  
+  .mobile-user-header {
+    padding: 16px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .mobile-user-info {
+    flex: 1;
+  }
+  
+  .mobile-user-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  
+  .mobile-user-username {
+    font-size: 13px;
+    color: #909399;
+  }
+  
+  .mobile-user-id {
+    font-size: 12px;
+    color: #c0c4cc;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  
+  .mobile-user-body {
+    padding: 16px;
+  }
+  
+  .mobile-user-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  
+  .mobile-user-row:last-child {
+    margin-bottom: 0;
+  }
+  
+  .mobile-user-label {
+    color: #909399;
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 70px;
+  }
+  
+  .mobile-user-value {
+    flex: 1;
+    color: #303133;
+    text-align: right;
+    font-size: 13px;
+  }
+  
+  .mobile-user-actions {
+    padding: 16px;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  
+  .mobile-user-actions .el-button {
+    flex: 1;
+    height: 40px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+  }
+  
   .card-header {
-    flex-direction: column;
-    gap: 15px;
+    gap: 8px;
     align-items: center;
   }
   
   .header-left,
   .header-center,
   .header-right {
-    flex: none;
-    width: 100%;
-    justify-content: center;
+    flex: 1;
   }
   
-  .card-header h3 {
-    font-size: 18px;
+  .header-left .el-button,
+  .header-right .el-button {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  
+  .header-center h3 {
+    font-size: 16px;
+    text-align: center;
+    font-weight: bold;
   }
   
   .search-bar {
     padding: 16px;
     margin: 16px 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
   
-  .search-buttons {
-    justify-content: center;
-    flex-wrap: wrap;
+  .search-bar :deep(.el-col) {
+    margin-bottom: 12px;
   }
   
-  .search-btn,
-  .reset-btn {
-    flex: 1;
-    min-width: 120px;
+  .search-bar :deep(.el-input) {
+    width: 100%;
+  }
+  
+  .search-bar :deep(.el-input__inner) {
+    height: 48px;
+    line-height: 48px;
+    font-size: 16px !important;
+    border-radius: 8px;
+    border: 2px solid #e1e5e9;
+  }
+  
+  .search-bar :deep(.el-input__inner:focus) {
+    border-color: #409eff;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+  }
+  
+  .search-bar .el-button {
+    width: 100%;
+    height: 48px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 8px;
+    margin: 0 0 8px 0;
   }
   
   .signature-image {
@@ -940,35 +1163,175 @@ onMounted(() => {
     max-height: 75px;
   }
   
+  /* 移动端对话框优化 - 横向布局 */
+  :deep(.el-dialog) {
+    margin: 16px;
+    max-width: calc(100vw - 32px);
+    border-radius: 16px;
+  }
+  
+  :deep(.el-dialog__header) {
+    padding: 20px 20px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  :deep(.el-dialog__title) {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 16px 20px;
+  }
+  
+  /* 表单项横向布局 */
+  :deep(.el-form-item) {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  
+  :deep(.el-form-item__label) {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 0;
+    padding: 0 12px 0 0 !important;
+    text-align: left !important;
+    width: 100px !important;
+    flex-shrink: 0;
+  }
+  
+  :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  :deep(.el-input__inner),
+  :deep(.el-select .el-input__inner) {
+    height: 44px;
+    line-height: 44px;
+    font-size: 15px !important;
+    border-radius: 8px;
+    border: 2px solid #e1e5e9;
+  }
+  
+  :deep(.el-input__inner:focus),
+  :deep(.el-select .el-input__inner:focus) {
+    border-color: #409eff;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+  }
+  
+  /* 签名上传区域特殊处理 */
+  :deep(.el-form-item:has(.signature-upload)) {
+    flex-wrap: wrap;
+  }
+  
+  :deep(.el-form-item:has(.signature-upload) .el-form-item__content) {
+    width: 100%;
+    margin-top: 8px;
+  }
+  
   :deep(.el-table) {
     font-size: 14px;
+    border-radius: 8px;
+    overflow: hidden;
   }
   
   :deep(.el-table th.el-table__cell),
   :deep(.el-table td.el-table__cell) {
     padding: 12px 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  :deep(.el-table__row:hover) {
+    background-color: #f8f9fa;
+  }
+  
+  :deep(.el-table th.el-table__cell) {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #303133;
   }
 }
 
 @media (max-width: 480px) {
+  .user-management {
+    padding: 8px;
+  }
+  
+  .header-left .el-button,
+  .header-right .el-button {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+  
+  .header-center h3 {
+    font-size: 15px;
+    font-weight: bold;
+  }
+  
   .search-buttons {
     flex-direction: column;
+    gap: 8px;
+    width: 100%;
   }
   
   .search-btn,
   .reset-btn {
     width: 100%;
-    margin-bottom: 8px;
-  }
-  
-  .card-header h3 {
-    font-size: 16px;
+    margin: 0;
   }
   
   :deep(.el-table th.el-table__cell),
   :deep(.el-table td.el-table__cell) {
     padding: 8px 4px;
     font-size: 13px;
+  }
+  
+  /* 分页组件优化 */
+  .pagination {
+    margin-top: 16px;
+    margin-bottom: 20px;
+    padding: 0 8px;
+  }
+  
+  :deep(.el-pagination) {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  :deep(.el-pagination .el-pagination__total) {
+    order: -1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #606266;
+  }
+  
+  :deep(.el-pagination .el-pagination__sizes) {
+    font-size: 13px;
+    margin: 0 4px;
+  }
+  
+  :deep(.el-pagination .el-pagination__jump) {
+    font-size: 13px;
+    margin-left: 8px;
+  }
+  
+  :deep(.el-pagination .el-pager li),
+  :deep(.el-pagination .btn-prev),
+  :deep(.el-pagination .btn-next) {
+    min-width: 36px;
+    height: 36px;
+    line-height: 34px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 2px;
   }
 }
 </style>

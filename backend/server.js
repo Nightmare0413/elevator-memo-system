@@ -10,7 +10,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 中间件配置
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000', 'http://192.168.130.36:8080'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -26,7 +31,7 @@ app.use('/api/memos', memoRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/users', userRoutes);
 
-// 根路径
+// 根路径 - 返回 API 信息
 app.get('/', (req, res) => {
   res.json({ 
     message: '电梯自行检测备忘录电子化系统 API',

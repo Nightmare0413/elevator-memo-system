@@ -365,15 +365,20 @@ onMounted(() => {
 /* 移动端优先登录设计 */
 @media (max-width: 768px) {
   .login-container {
-    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     height: 100vh;
-    max-height: 100vh;
+    overflow: hidden;
   }
   
   .login-content {
     flex-direction: column;
-    height: 100%;
+    height: 100vh;
     overflow-y: auto;
+    position: relative;
   }
   
   .login-left {
@@ -381,6 +386,7 @@ onMounted(() => {
     min-height: 35vh;
     padding: 20px 16px 16px;
     text-align: center;
+    position: relative;
   }
   
   .login-left::before {
@@ -389,11 +395,14 @@ onMounted(() => {
   
   .brand-section {
     max-width: 100%;
+    position: relative;
   }
   
   .system-title {
     font-size: 22px;
     margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
   }
   
   .system-subtitle {
@@ -436,51 +445,45 @@ onMounted(() => {
     color: #606266;
   }
   
-  /* 表单项移动端优化 */
-  :deep(.el-form-item) {
+  /* 表单项移动端优化 - 移除嵌套边框 */
+  .login-form :deep(.el-form-item) {
     margin-bottom: 20px;
   }
   
-  :deep(.el-form-item__label) {
+  .login-form :deep(.el-form-item__label) {
     font-size: 15px;
     font-weight: 600;
     color: #303133;
     padding-bottom: 8px;
   }
   
-  :deep(.el-input) {
+  .login-form :deep(.el-input) {
     height: 48px;
   }
   
-  :deep(.el-input__inner) {
-    height: 48px;
-    font-size: 16px !important; /* 防止iOS缩放 */
-    border-radius: 8px;
-    border: 2px solid #e1e5e9;
-    padding: 0 16px;
-    transition: all 0.3s ease;
+  .login-form :deep(.el-input__wrapper) {
+    height: 48px !important;
+    border: 1px solid #dcdfe6 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    background: #fff !important;
   }
   
-  :deep(.el-input__inner:focus) {
-    border-color: #409eff;
-    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+  .login-form :deep(.el-input__wrapper:hover) {
+    border-color: #409eff !important;
   }
   
-  :deep(.el-input__prefix) {
-    left: 12px;
-    color: #909399;
+  .login-form :deep(.el-input__wrapper.is-focus) {
+    border-color: #409eff !important;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1) !important;
   }
   
-  :deep(.el-input__suffix) {
-    right: 12px;
-  }
-  
-  :deep(.el-input--prefix .el-input__inner) {
-    padding-left: 40px;
-  }
-  
-  :deep(.el-input--suffix .el-input__inner) {
-    padding-right: 40px;
+  .login-form :deep(.el-input__inner) {
+    height: 46px !important;
+    font-size: 16px !important;
+    border: none !important;
+    padding: 0 16px !important;
+    background: transparent !important;
   }
   
   /* 登录按钮优化 */
@@ -495,16 +498,6 @@ onMounted(() => {
     box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
     margin-top: 8px;
     transition: all 0.3s ease;
-  }
-  
-  .login-form :deep(.el-button--primary:hover) {
-    background: linear-gradient(135deg, #3a8ee6 0%, #337ecc 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
-  }
-  
-  .login-form :deep(.el-button--primary:active) {
-    transform: translateY(0);
   }
 }
 

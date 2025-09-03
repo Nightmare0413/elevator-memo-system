@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 8080,
-    open: true,
+    open: false,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
@@ -24,9 +24,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    chunkSizeWarningLimit: 1600,
-    rollupOptions: {
-      input: './index.html'
-    }
+    chunkSizeWarningLimit: 1600
   }
 })

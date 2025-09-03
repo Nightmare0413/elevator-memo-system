@@ -232,6 +232,108 @@
         </el-table-column>
       </el-table>
 
+      <!-- 移动端卡片布局 -->
+      <div class="mobile-memo-list">
+        <div 
+          v-for="memo in memoList" 
+          :key="memo.id" 
+          class="mobile-memo-card"
+        >
+          <el-checkbox 
+            class="memo-checkbox"
+            :model-value="selectedMemos.some(m => m.id === memo.id)"
+            @change="(val) => toggleMemoSelection(memo, val)"
+            @click.stop
+          />
+          
+          <div class="mobile-memo-header">
+            <div class="mobile-memo-number">
+              {{ memo.memo_number }}
+            </div>
+            <div class="mobile-memo-unit">{{ memo.user_unit_name }}</div>
+          </div>
+          
+          <div class="mobile-memo-body">
+            <div class="mobile-memo-row">
+              <span class="mobile-memo-label">登记证号:</span>
+              <span class="mobile-memo-value">{{ memo.registration_cert_no }}</span>
+            </div>
+            <div class="mobile-memo-row">
+              <span class="mobile-memo-label">设备品种:</span>
+              <span class="mobile-memo-value">{{ memo.equipment_type }}</span>
+            </div>
+            <div class="mobile-memo-row">
+              <span class="mobile-memo-label">不符合情况:</span>
+              <span class="mobile-memo-value">
+                <el-tag 
+                  :type="getNonConformanceTagType(memo.non_conformance_status)"
+                  size="small"
+                >
+                  {{ getShortNonConformanceLabel(memo.non_conformance_status) }}
+                </el-tag>
+              </span>
+            </div>
+            <div class="mobile-memo-row">
+              <span class="mobile-memo-label">检测日期:</span>
+              <span class="mobile-memo-value">{{ formatDate(memo.inspection_date) }}</span>
+            </div>
+            <div class="mobile-memo-row">
+              <span class="mobile-memo-label">签字状态:</span>
+              <span class="mobile-memo-value">
+                <el-tag 
+                  v-if="memo.representative_signature"
+                  type="success"
+                  size="small"
+                >
+                  已签字 ({{ formatDate(memo.signing_date) }})
+                </el-tag>
+                <el-tag v-else type="warning" size="small">
+                  待签字
+                </el-tag>
+              </span>
+            </div>
+          </div>
+          
+          <div class="mobile-memo-actions">
+            <div class="mobile-action-row">
+              <el-button 
+                type="primary" 
+                size="default"
+                @click.stop="editMemo(memo.id)"
+              >
+                编辑
+              </el-button>
+              <el-button 
+                type="warning"
+                size="default"
+                @click.stop="showSingleSignDialog(memo)"
+                :disabled="memo.representative_signature"
+              >
+                签字
+              </el-button>
+            </div>
+            <div class="mobile-action-row">
+              <el-button 
+                type="success"
+                size="default"
+                :loading="pdfGeneratingIds.includes(memo.id)"
+                @click.stop="generatePDF(memo.id)"
+              >
+                PDF
+              </el-button>
+              <el-button 
+                type="info"
+                size="default"
+                :loading="copyingIds.includes(memo.id)"
+                @click.stop="copyMemo(memo.id)"
+              >
+                复制
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
@@ -302,6 +404,7 @@ export default {
         search: ''
       },
       copyingIds: [],
+      pdfGeneratingIds: [],
       selectedMemos: [],
       batchPdfLoading: false,
       batchDeleteLoading: false,
@@ -365,6 +468,11 @@ export default {
         const response = await memoApi.getMemos(params)
         this.memoList = response.memos
         this.pagination = response.pagination
+        console.log('Memo count debug:', {
+          memosLength: response.memos.length,
+          paginationTotal: response.pagination.total,
+          params
+        })
       } catch (error) {
         console.error('获取备忘录列表失败:', error)
         ElMessage.error('获取备忘录列表失败')
@@ -410,13 +518,67 @@ export default {
 
     // 行点击事件 - 切换选中状态
     handleRowClick(row) {
-      this.$refs.memoTable.toggleRowSelection(row)
+      if (this.$refs.memoTable) {
+        this.$refs.memoTable.toggleRowSelection(row)
+      }
     },
 
     // 处理备忘录编号点击事件
     handleMemoNumberClick(row) {
       // 切换选中状态
-      this.$refs.memoTable.toggleRowSelection(row)
+      if (this.$refs.memoTable) {
+        this.$refs.memoTable.toggleRowSelection(row)
+      }
+    },
+
+    // 移动端选择备忘录
+    toggleMemoSelection(memo, checked) {
+      const index = this.selectedMemos.findIndex(m => m.id === memo.id)
+      if (checked && index === -1) {
+        this.selectedMemos.push(memo)
+      } else if (!checked && index > -1) {
+        this.selectedMemos.splice(index, 1)
+      }
+      
+      // 同步桌面端表格选中状态
+      if (this.$refs.memoTable) {
+        if (checked) {
+          this.$refs.memoTable.toggleRowSelection(memo, true)
+        } else {
+          this.$refs.memoTable.toggleRowSelection(memo, false)
+        }
+      }
+    },
+
+    // 生成单个PDF
+    async generatePDF(id) {
+      const memo = this.memoList.find(m => m.id === id)
+      
+      // 检查签字状态
+      if (!memo.representative_signature) {
+        ElMessageBox.alert(
+          '只有已签字的备忘录才能生成PDF，请先完成签字后再生成PDF文件。',
+          '提示',
+          {
+            confirmButtonText: '确定',
+            type: 'warning'
+          }
+        )
+        return
+      }
+      
+      this.pdfGeneratingIds.push(id)
+      try {
+        const response = await memoApi.generatePDF(id)
+        const filename = `${memo?.memo_number || id}.pdf`
+        downloadFile(response, filename)
+        ElMessage.success('PDF生成成功')
+      } catch (error) {
+        console.error('生成PDF失败:', error)
+        ElMessage.error('生成PDF失败')
+      } finally {
+        this.pdfGeneratingIds = this.pdfGeneratingIds.filter(pdfId => pdfId !== id)
+      }
     },
 
     // 复制备忘录
@@ -438,6 +600,21 @@ export default {
     async batchGeneratePDF() {
       if (this.selectedMemos.length === 0) {
         ElMessage.warning('请选择要生成PDF的备忘录')
+        return
+      }
+      
+      // 检查选中备忘录的签字状态
+      const unsignedMemos = this.selectedMemos.filter(memo => !memo.representative_signature)
+      
+      if (unsignedMemos.length > 0) {
+        ElMessageBox.alert(
+          `选中的备忘录中有 ${unsignedMemos.length} 份尚未签字，只有已签字的备忘录才能生成PDF。请先完成签字后再生成PDF文件。`,
+          '提示',
+          {
+            confirmButtonText: '确定',
+            type: 'warning'
+          }
+        )
         return
       }
       
@@ -571,6 +748,26 @@ export default {
       // 保存选中的备忘录ID到localStorage
       const selectedIds = this.selectedMemos.map(memo => memo.id)
       localStorage.setItem('batch_sign_memo_ids', JSON.stringify(selectedIds))
+      
+      // 跳转到签字页面
+      this.$router.push({
+        path: '/signature',
+        query: { 
+          returnTo: this.$route.fullPath,
+          batch: 'true'
+        }
+      })
+    },
+
+    // 显示单个签字对话框
+    showSingleSignDialog(memo) {
+      if (memo.representative_signature) {
+        ElMessage.warning('该备忘录已经签字')
+        return
+      }
+      
+      // 保存单个备忘录ID到localStorage
+      localStorage.setItem('batch_sign_memo_ids', JSON.stringify([memo.id]))
       
       // 跳转到签字页面
       this.$router.push({
@@ -734,6 +931,17 @@ export default {
 }
 
 
+/* 桌面端样式 */
+@media (min-width: 769px) {
+  .mobile-memo-list {
+    display: none !important;
+  }
+  
+  :deep(.el-table) {
+    display: table !important;
+  }
+}
+
 /* 移动端优先设计 - 针对手机用户优化 */
 @media (max-width: 768px) {
   .memo-list {
@@ -824,44 +1032,130 @@ export default {
     font-weight: 500;
   }
   
-  /* 表格完全重构为移动端卡片式布局 */
+  /* 移动端隐藏表格，显示卡片布局 */
   :deep(.el-table) {
-    border: none;
-    background: transparent;
+    display: none !important;
   }
   
-  :deep(.el-table__header-wrapper) {
-    display: none; /* 隐藏表头 */
-  }
-  
-  :deep(.el-table__body-wrapper) {
-    border: none;
-  }
-  
-  :deep(.el-table__body) {
+  .mobile-memo-list {
+    display: block !important;
     width: 100%;
   }
   
-  :deep(.el-table__row) {
-    display: block;
-    margin-bottom: 12px;
+  .mobile-memo-card {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     border: 1px solid #f0f0f0;
+    margin-bottom: 12px;
     overflow: hidden;
+    position: relative;
+    transition: all 0.2s ease;
   }
   
-  :deep(.el-table__row:hover) {
-    background-color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  .mobile-memo-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
   }
   
-  :deep(.el-table__row td) {
-    display: block;
-    border: none;
+  .mobile-memo-card .memo-checkbox {
+    position: absolute;
+    top: 12px;
+    right: 2px;
+    z-index: 10;
+    margin: 0;
     padding: 0;
-    text-align: left;
+    border: none !important;
+    background: transparent !important;
+  }
+  
+  .mobile-memo-card .memo-checkbox :deep(.el-checkbox__input) {
+    border: 2px solid #dcdfe6 !important;
+    background: white !important;
+    border-radius: 4px !important;
+  }
+  
+  .mobile-memo-card .memo-checkbox :deep(.el-checkbox__input.is-checked) {
+    border-color: #409eff !important;
+    background: #409eff !important;
+  }
+  
+  .mobile-memo-card .memo-checkbox :deep(.el-checkbox__inner) {
+    border: none !important;
+    background: transparent !important;
+  }
+  
+  .mobile-memo-header {
+    padding: 16px 40px 12px 16px;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  
+  .mobile-memo-number {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1890ff;
+    margin-bottom: 4px;
+  }
+  
+  .mobile-memo-unit {
+    font-size: 15px;
+    color: #303133;
+    margin-bottom: 0;
+  }
+  
+  .mobile-memo-body {
+    padding: 12px 16px;
+  }
+  
+  .mobile-memo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  .mobile-memo-row:last-child {
+    margin-bottom: 0;
+  }
+  
+  .mobile-memo-label {
+    color: #909399;
+    font-size: 12px;
+    margin-right: 8px;
+    min-width: 60px;
+  }
+  
+  .mobile-memo-value {
+    flex: 1;
+    color: #303133;
+    text-align: right;
+  }
+  
+  .mobile-memo-actions {
+    padding: 16px;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .mobile-action-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .mobile-memo-actions .el-button {
+    height: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    min-width: 0;
+    padding: 0 16px;
+    flex: 1;
+    box-sizing: border-box;
   }
   
   /* 选择框单独一行 */
@@ -878,12 +1172,16 @@ export default {
   
   /* 备忘录卡片内容布局 */
   :deep(.el-table__row td:nth-child(2)) {
-    padding: 12px;
+    padding: 16px 12px 12px 12px;
     padding-top: 40px; /* 为选择框留空间 */
-    font-size: 16px;
-    font-weight: 600;
-    color: #303133;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1890ff;
     border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
   }
   
   :deep(.el-table__row td:nth-child(2):before) {
@@ -894,10 +1192,13 @@ export default {
   }
   
   :deep(.el-table__row td:nth-child(3)) {
-    padding: 8px 12px;
-    font-size: 14px;
-    color: #606266;
+    padding: 12px;
+    font-size: 15px;
+    color: #303133;
     border-bottom: 1px solid #f5f5f5;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
   
   :deep(.el-table__row td:nth-child(3):before) {
@@ -972,24 +1273,31 @@ export default {
   
   /* 操作按钮区域 */
   :deep(.el-table__row td:last-child) {
-    padding: 12px;
+    padding: 16px 12px;
     background: #fafafa;
     text-align: center;
+    min-height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
   
   .table-action-buttons {
     display: flex;
     gap: 12px;
     justify-content: center;
+    width: 100%;
   }
   
   .table-action-buttons .el-button {
     flex: 1;
     margin: 0;
     height: 40px;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 500;
     border-radius: 6px;
+    min-width: 0;
+    padding: 0 8px;
   }
   
   /* 标签优化 */

@@ -15,6 +15,9 @@ router.post('/batch-sign', authenticateToken, memoController.batchSign);
 // 获取单个备忘录 GET /api/memos/:id
 router.get('/:id', authenticateToken, memoController.getMemoById);
 
+// 更新备忘录 PUT /api/memos/:id
+router.put('/:id', authenticateToken, memoController.updateMemo);
+
 // 复制备忘录 POST /api/memos/:id/copy
 router.post('/:id/copy', authenticateToken, memoController.copyMemo);
 

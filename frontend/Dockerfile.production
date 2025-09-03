@@ -1,0 +1,70 @@
+# 电梯备忘录系统前端 - 生产环境 Dockerfile
+
+# 构建阶段
+FROM node:18-alpine AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制 package.json 和 package-lock.json
+COPY package*.json ./
+
+# 安装依赖（包含开发依赖以便构建）
+RUN npm ci --no-audit --no-fund && \
+    npm cache clean --force
+
+# 复制源代码
+COPY . .
+
+# 构建应用（设置 esbuild 二进制文件路径）
+RUN npm rebuild esbuild && \
+    npm run build
+
+# 生产阶段 - 使用 Nginx 提供静态文件服务
+FROM nginx:1.24-alpine AS production
+
+# 安装必要工具
+RUN apk add --no-cache curl ca-certificates
+
+# 设置时区
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Shanghai
+
+# 创建非特权用户
+RUN addgroup -g 1001 -S elevator && \
+    adduser -S elevator -u 1001 -G elevator
+
+# 从构建阶段复制构建结果
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 复制 Nginx 配置
+COPY nginx.production.conf /etc/nginx/nginx.conf
+
+# 创建必要的目录并设置权限
+RUN mkdir -p /var/cache/nginx /var/run /var/log/nginx && \
+    chown -R elevator:elevator /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html && \
+    chmod -R 755 /var/cache/nginx /var/run /var/log/nginx
+
+# 创建 PID 文件目录
+RUN mkdir -p /run/nginx && \
+    chown elevator:elevator /run/nginx
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:80 || exit 1
+
+# 切换到非特权用户
+USER elevator
+
+# 暴露端口
+EXPOSE 80
+
+# 启动 Nginx
+CMD ["nginx", "-g", "daemon off;"]
+
+# 构建标签
+LABEL \
+    name="elevator-memo-frontend" \
+    description="电梯自行检测备忘录电子化系统 - 前端静态服务" \
+    version="1.0.0" \
+    maintainer="elevator-memo-team"

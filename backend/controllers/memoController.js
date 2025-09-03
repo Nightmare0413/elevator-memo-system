@@ -15,6 +15,15 @@ class MemoController {
       const userId = req.user?.userId;
       const userRole = req.user?.role;
       
+      // 添加调试日志
+      console.log('getAllMemos调试信息:', {
+        userId,
+        userRole,
+        page,
+        limit,
+        query: req.query
+      });
+      
       // 构建筛选条件对象
       const filters = {
         search: req.query.search || '',
@@ -26,6 +35,10 @@ class MemoController {
       };
 
       const result = await Memo.findAll(page, limit, filters, userId, userRole);
+      console.log('查询结果调试:', {
+        totalMemos: result.memos.length,
+        paginationTotal: result.pagination.total
+      });
       res.status(200).json(result);
     } catch (error) {
       console.error('获取备忘录列表失败:', error);
@@ -132,6 +145,29 @@ class MemoController {
     }
   }
 
+  // 更新备忘录
+  static async updateMemo(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+      const updateData = req.body;
+      
+      const updatedMemo = await Memo.update(id, updateData, userId, userRole);
+      
+      res.status(200).json({
+        message: '备忘录更新成功',
+        memo: updatedMemo
+      });
+    } catch (error) {
+      console.error('更新备忘录失败:', error);
+      res.status(500).json({ 
+        error: '更新备忘录失败', 
+        message: error.message 
+      });
+    }
+  }
+
   // 生成PDF
   static async generatePDF(req, res) {
     // 使用互斥锁确保同一时间只有一个PDF在生成
@@ -154,6 +190,14 @@ class MemoController {
       if (!memo) {
         return res.status(404).json({ error: '备忘录不存在' });
       }
+      
+      // 检查签字状态
+      if (!memo.representative_signature) {
+        return res.status(400).json({ 
+          error: '备忘录尚未签字', 
+          message: '只有已签字的备忘录才能生成PDF，请先完成签字。'
+        });
+      }
 
       // 读取HTML模板
       const templatePath = path.join(__dirname, '../templates/memo-template.html');
@@ -169,6 +213,10 @@ class MemoController {
         return `${year}年${month}月${day}日`;
       };
 
+      // 预处理变量
+      const recommendations = memo.recommendations || '';
+      const nonConformanceStatus = memo.non_conformance_status || 0;
+      
       // 替换模板中的数据
       htmlTemplate = htmlTemplate
         .replace(/{{memo_number}}/g, memo.memo_number || '')
@@ -181,12 +229,38 @@ class MemoController {
         .replace(/{{inspection_date_formatted}}/g, formatDateForPDF(memo.inspection_date))
         .replace(/{{signing_date}}/g, memo.signing_date || '')
         .replace(/{{signing_date_formatted}}/g, formatDateForPDF(memo.signing_date))
-        .replace(/{{recommendations}}/g, memo.recommendations || '')
-        .replace(/{{non_conformance_status_raw}}/g, memo.non_conformance_status || 0);
+        .replace(/{{recommendations}}/g, nonConformanceStatus === 0 ? '' : recommendations)
+        .replace(/{{non_conformance_status_raw}}/g, nonConformanceStatus);
 
-      // 建议区域始终显示
-      const recommendationsDisplay = '';
-      htmlTemplate = htmlTemplate.replace(/{{recommendations_display}}/g, recommendationsDisplay);
+      // 根据不符合情况和建议内容长度动态调整
+      let recommendationsDisplay = '';
+      let recommendationsClass = 'auto-size';
+      let nonConformanceCellClass = '';
+      
+      // 如果选择"无"，清空建议内容但保持区域显示
+      if (nonConformanceStatus === 0) {
+        nonConformanceCellClass = 'expanded'; // 扩大单元格填满页面
+      } else {
+        // 根据建议内容长度自动调整字体大小
+        const textLength = recommendations.length;
+        if (textLength > 1000) {
+          recommendationsClass = 'size-tiny';
+        } else if (textLength > 700) {
+          recommendationsClass = 'size-smaller';
+        } else if (textLength > 450) {
+          recommendationsClass = 'size-small';
+        }
+        
+        // 如果建议内容为空但非"无"状态，也扩大单元格
+        if (recommendations.trim() === '') {
+          nonConformanceCellClass = 'expanded';
+        }
+      }
+      
+      htmlTemplate = htmlTemplate
+        .replace(/{{recommendations_display}}/g, recommendationsDisplay)
+        .replace(/{{recommendations_class}}/g, recommendationsClass)
+        .replace(/{{non_conformance_cell_class}}/g, nonConformanceCellClass);
 
       // 处理检测人员签名图片（使用用户默认签名）
       if (memo.tester_signature_path) {
@@ -223,7 +297,16 @@ class MemoController {
       // 启动Puppeteer
       browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+        args: [
+          '--no-sandbox', 
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ]
       });
       const page = await browser.newPage();
       

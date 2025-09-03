@@ -36,27 +36,31 @@
           <el-input :value="formatDate(profileForm.created_at)" disabled />
         </el-form-item>
         
-        <el-form-item v-if="isEditing">
-          <el-button type="primary" @click="saveProfile" :loading="saving">
-            保存修改
-          </el-button>
-          <el-button @click="cancelEdit">
-            取消
-          </el-button>
+        <el-form-item v-if="isEditing" class="edit-actions-group">
+          <div class="edit-actions-buttons">
+            <el-button type="primary" @click="saveProfile" :loading="saving" class="edit-action-button">
+              保存修改
+            </el-button>
+            <el-button @click="cancelEdit" class="edit-action-button">
+              取消
+            </el-button>
+          </div>
         </el-form-item>
         
-        <el-form-item v-if="!isEditing">
-          <el-button type="primary" @click="startEdit">
+        <div v-if="!isEditing" class="mobile-buttons-container">
+          <el-button type="primary" @click="startEdit" class="mobile-primary-button">
             编辑信息
           </el-button>
-          <el-button @click="showPasswordDialog = true">
-            修改密码
-          </el-button>
-          <el-button @click="goHome" class="back-button">
-            <el-icon><ArrowLeft /></el-icon>
-            返回主页
-          </el-button>
-        </el-form-item>
+          <div class="mobile-secondary-buttons">
+            <el-button @click="showPasswordDialog = true" class="mobile-secondary-button">
+              修改密码
+            </el-button>
+            <el-button @click="goHome" class="mobile-secondary-button back-button">
+              <el-icon><ArrowLeft /></el-icon>
+              返回主页
+            </el-button>
+          </div>
+        </div>
       </el-form>
     </el-card>
     
@@ -307,16 +311,19 @@ onMounted(() => {
   font-weight: bold;
 }
 
-.back-button {
-  background: #f5f7fa;
-  border-color: #dcdfe6;
-  color: #606266;
-}
+/* 桌面端返回按钮样式 */
+@media (min-width: 769px) {
+  .back-button {
+    background: #f5f7fa;
+    border-color: #dcdfe6;
+    color: #606266;
+  }
 
-.back-button:hover {
-  background: #ecf5ff;
-  border-color: #409eff;
-  color: #409eff;
+  .back-button:hover {
+    background: #ecf5ff;
+    border-color: #409eff;
+    color: #409eff;
+  }
 }
 
 .profile-form {
@@ -335,9 +342,228 @@ onMounted(() => {
   font-size: 14px;
 }
 
+/* 编辑操作按钮样式 */
+.edit-actions-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.edit-action-button {
+  flex: 1;
+  height: 40px;
+  font-size: 14px;
+  border-radius: 6px;
+  min-width: 0;
+  max-width: 150px;
+}
+
+/* 移动端按钮容器 */
+.mobile-buttons-container {
+  margin-top: 30px;
+  padding: 0 20px;
+}
+
+/* 主按钮样式 */
+.mobile-primary-button {
+  width: 100%;
+  height: 44px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* 次要按钮容器 */
+.mobile-secondary-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+/* 次要按钮样式 */
+.mobile-secondary-button {
+  flex: 1;
+  height: 40px;
+  font-size: 14px;
+  border-radius: 6px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  color: #495057;
+}
+
+.mobile-secondary-button:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.mobile-secondary-button.back-button {
+  background: #fff;
+  border-color: #dee2e6;
+}
+
+.mobile-secondary-button.back-button:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
 @media (max-width: 768px) {
   .profile-container {
-    margin: 0 10px;
+    margin: 0 15px;
+    max-width: none;
+  }
+  
+  .profile-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 移动端表单样式调整 */
+  .profile-form {
+    padding: 20px 0 10px 0;
+  }
+  
+  .profile-form .el-form-item {
+    margin-bottom: 20px;
+  }
+  
+  .profile-form :deep(.el-form-item__label) {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding-right: 12px;
+    font-weight: 500;
+    color: #333;
+    width: 80px !important;
+    min-width: 80px !important;
+    flex-shrink: 0;
+  }
+  
+  .profile-form :deep(.el-form-item__content) {
+    flex: 1;
+    margin-left: 0 !important;
+  }
+  
+  .profile-form :deep(.el-input__wrapper) {
+    border-radius: 6px;
+  }
+  
+  /* 编辑操作按钮移动端样式 */
+  .edit-actions-group :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+  
+  .edit-actions-buttons {
+    gap: 10px;
+    padding: 0 15px;
+    max-width: 300px;
+  }
+  
+  .edit-action-button {
+    height: 44px;
+    font-size: 15px;
+  }
+  
+  /* 移动端按钮容器调整 */
+  .mobile-buttons-container {
+    margin-top: 20px;
+    padding: 0 15px 20px;
+  }
+  
+  .mobile-primary-button {
+    height: 46px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(64, 158, 255, 0.3);
+  }
+  
+  .mobile-secondary-buttons {
+    gap: 10px;
+  }
+  
+  .mobile-secondary-button {
+    height: 42px;
+    font-size: 14px;
+  }
+  
+  /* 小屏幕优化 */
+  @media (max-width: 480px) {
+    .profile-container {
+      margin: 0 10px;
+    }
+    
+    .edit-actions-buttons {
+      gap: 8px;
+      padding: 0 10px;
+      max-width: 280px;
+    }
+    
+    .profile-form :deep(.el-form-item__label) {
+      width: 70px !important;
+      min-width: 70px !important;
+    }
+    
+    .edit-action-button {
+      height: 42px;
+      font-size: 14px;
+    }
+    
+    .mobile-buttons-container {
+      padding: 0 10px 15px;
+    }
+    
+    .mobile-primary-button {
+      height: 44px;
+      font-size: 15px;
+    }
+    
+    .mobile-secondary-button {
+      height: 40px;
+      font-size: 13px;
+    }
+    
+    .mobile-secondary-buttons {
+      gap: 8px;
+    }
+  }
+  
+  /* 超小屏幕优化 */
+  @media (max-width: 360px) {
+    .profile-container {
+      margin: 0 8px;
+    }
+    
+    .edit-actions-buttons {
+      gap: 6px;
+      padding: 0 8px;
+      max-width: 260px;
+    }
+    
+    .profile-form :deep(.el-form-item__label) {
+      width: 65px !important;
+      min-width: 65px !important;
+      font-size: 13px;
+    }
+    
+    .edit-action-button {
+      height: 40px;
+      font-size: 13px;
+    }
+    
+    .mobile-primary-button {
+      height: 42px;
+      font-size: 14px;
+    }
+    
+    .mobile-secondary-button {
+      height: 38px;
+      font-size: 12px;
+    }
+    
+    .mobile-secondary-buttons {
+      gap: 6px;
+    }
   }
 }
 </style>

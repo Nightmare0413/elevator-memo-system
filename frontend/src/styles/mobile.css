@@ -47,8 +47,13 @@
     font-weight: 500 !important;
     border-radius: 8px !important;
     transition: all 0.3s ease !important;
-    border: 2px solid transparent !important;
+    border: 2px solid #e1e5e9 !important;
     box-sizing: border-box !important;
+  }
+  
+  .el-button:hover {
+    border-color: #c0c4cc !important;
+    transform: translateY(-1px) !important;
   }
   
   .el-button:active {
@@ -77,8 +82,45 @@
   .el-button--primary:hover,
   .el-button--primary:focus {
     background: linear-gradient(135deg, #3a8ee6 0%, #337ecc 100%) !important;
+    border-color: #2b73b3 !important;
     box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4) !important;
     transform: translateY(-1px) !important;
+  }
+  
+  /* 成功按钮样式 */
+  .el-button--success {
+    border-color: #5cb85c !important;
+  }
+  
+  .el-button--success:hover {
+    border-color: #449d44 !important;
+  }
+  
+  /* 警告按钮样式 */
+  .el-button--warning {
+    border-color: #f0ad4e !important;
+  }
+  
+  .el-button--warning:hover {
+    border-color: #ec971f !important;
+  }
+  
+  /* 信息按钮样式 */
+  .el-button--info {
+    border-color: #909399 !important;
+  }
+  
+  .el-button--info:hover {
+    border-color: #73767a !important;
+  }
+  
+  /* 危险按钮样式 */
+  .el-button--danger {
+    border-color: #f56565 !important;
+  }
+  
+  .el-button--danger:hover {
+    border-color: #e53e3e !important;
   }
   
   /* 输入框优化 */
@@ -86,30 +128,38 @@
     font-size: 15px !important;
   }
   
-  .el-input__inner {
-    height: 48px !important;
-    line-height: 48px !important;
-    font-size: 16px !important; /* 防止iOS缩放 */
+  .el-input__wrapper {
     border-radius: 8px !important;
     border: 2px solid #e1e5e9 !important;
-    padding: 0 16px !important;
+    box-shadow: none !important;
     transition: all 0.3s ease !important;
+    padding: 0 12px !important;
+  }
+
+  .el-input__inner {
+    height: 44px !important;
+    line-height: 44px !important;
+    font-size: 16px !important; /* 防止iOS缩放 */
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
   
-  .el-input__inner:focus {
+  .el-input__wrapper:focus-within {
     border-color: #409eff !important;
     box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1) !important;
   }
   
   .el-input--large .el-input__inner {
-    height: 52px !important;
-    line-height: 52px !important;
+    height: 48px !important;
+    line-height: 48px !important;
     font-size: 17px !important;
   }
   
   .el-input--small .el-input__inner {
-    height: 44px !important;
-    line-height: 44px !important;
+    height: 40px !important;
+    line-height: 40px !important;
     font-size: 15px !important;
   }
   
@@ -130,9 +180,9 @@
   }
   
   /* 选择器优化 */
-  .el-select .el-input .el-input__inner {
-    height: 48px !important;
-    line-height: 48px !important;
+  .el-select .el-input__inner {
+    height: 44px !important;
+    line-height: 44px !important;
   }
   
   .el-select-dropdown {
@@ -374,8 +424,8 @@
   }
   
   .el-input__inner {
-    height: 44px !important;
-    line-height: 44px !important;
+    height: 40px !important;
+    line-height: 40px !important;
     font-size: 15px !important;
   }
   
